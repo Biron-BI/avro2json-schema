@@ -1,5 +1,5 @@
-import avro2jsons from '../src/index'
-import * as assert from 'assert';
+const avro2jsons = require('../src/index')
+const assert = require('assert');
 
 describe('avro2jsons()',  () => {
   it('should convert avro to json schema', () => {

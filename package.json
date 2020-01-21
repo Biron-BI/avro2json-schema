@@ -4,7 +4,7 @@
   "description": "",
   "main": "src/index.js",
   "scripts": {
-    "test": "mocha --require esm"
+    "test": "mocha"
   },
   "engines": {
     "node": ">=8"

@@ -1,12 +1,12 @@
-import {castArray, isString, isArray} from 'lodash'
-import {Either} from "monet";
+const {castArray, isString, isArray} = require('lodash')
+const {Either} = require('monet');
 
 /**
  *
  * @param avro
  * @return {Either<string, {}>}
  */
-export default (avro) => {
+module.exports = (avro) => {
   return convertTypeRecord(avro)
     .map(convertedObject => ({
         "definitions": {},
