@@ -47,7 +47,7 @@ const convertTypeRecord = (avro) => {
  * @return {Either<string, Object>}
  */
 const convertField = (field) => {
-  const types = normalizeFieldType(field.type)
+  const types = normalizeFieldTypes(field.type)
 
   let typeIndex;
   if (fieldIsNullable(field) && types.length === 2) {
@@ -92,7 +92,7 @@ const convertType = (type) => {
   } else if (tt === 'record') {
     return convertTypeRecord(type)
   } else if (tt === 'array') {
-    return convertType(type.items).bimap(
+    return convertType(normalizeFieldType(type.items)).bimap(
       err => `.items : ${err}`,
       convertedItem => ({type: "array", items: convertedItem})
     )
@@ -101,7 +101,9 @@ const convertType = (type) => {
   }
 }
 
-const normalizeFieldType = (type) => ((type && castArray(type)) || [])
-  .map(oneType => isString(oneType) ? {type: oneType} : oneType)
+const normalizeFieldTypes = (types) => ((types && castArray(types)) || [])
+  .map(normalizeFieldType)
 
-const fieldIsNullable = (field) => !!normalizeFieldType(field.type).find(({type}) => type === 'null')
+const normalizeFieldType = (type) => isString(type) ? {type} : type
+
+const fieldIsNullable = (field) => !!normalizeFieldTypes(field.type).find(({type}) => type === 'null')

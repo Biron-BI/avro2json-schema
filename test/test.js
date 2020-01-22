@@ -90,4 +90,35 @@ describe('avro2jsons()',  () => {
     }
     assert.deepEqual(avro2jsons(avro).bimap(err => {throw new Error(err)}, v=>v).right(), expected);
   });
+
+  it('should convert array of string', () => {
+    const avro = {
+      "name": "com.test.Order",
+      "type": "record",
+      "fields": [
+        {
+          "name": "orderlines",
+          "type": {
+            "type": "array",
+            "items": "string"
+          }
+        }
+      ]
+    }
+    const expected = {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "definitions": {},
+      "type": "object",
+      "required": ["orderlines"],
+      "properties": {
+        "orderlines": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      }
+    }
+    assert.deepEqual(avro2jsons(avro).bimap(err => {throw new Error(err)}, v=>v).right(), expected);
+  });
 });
