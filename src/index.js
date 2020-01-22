@@ -7,11 +7,11 @@ const {Either} = require('monet');
  * @return {Either<string, {}>}
  */
 module.exports = (avro) => {
-  return convertType(avro)
-    .map(convertedObject => ({
-        "definitions": {},
+  return convertType({}, avro)
+    .map(({definitions, converted}) => ({
+        "definitions": definitions,
         "$schema": "http://json-schema.org/draft-07/schema#",
-        ...convertedObject
+        ...converted
       }
     ))
 }
@@ -19,34 +19,37 @@ module.exports = (avro) => {
 /**
  *
  * @param avro
- * @return {Either<string, Object>}
+ * @return {Either<string, {definitions: {}, converted: {}}>}
  */
-const convertTypeRecord = (avro) => {
+const convertTypeRecord = (definitions, avro) => {
   if (!(avro.fields && isArray(avro.fields))) {
     return Either.left('must have a .fields property of type array ')
   } else
     return avro.fields
-      .reduce((accE, field) => accE.flatMap(acc =>
-        convertField(field).bimap(
+      .reduce((accE, field) => accE.flatMap(({definitions: accDefinitions, converted: accConverted}) =>
+        convertField(accDefinitions, field).bimap(
           err => `.fields[@name='${field.name}'] : ${err}`,
-          convertedField => ({...acc, [field.name]: convertedField})
+          ({definitions, converted}) => ({definitions, converted: {...accConverted, [field.name]: converted}})
         )
-      ), Either.right({}))
-      .map(convertedFields => ({
-        type: "object",
-        required: avro.fields
-          .filter(field => !fieldIsNullable(field))
-          .map(({name}) => name),
-        properties: convertedFields
+      ), Either.right({definitions, converted: {}}))
+      .map(({definitions: accDefinitions, converted: accConverted}) => ({
+        definitions: accDefinitions,
+        converted: {
+          type: "object",
+          required: avro.fields
+            .filter(field => !fieldIsNullable(field))
+            .map(({name}) => name),
+          properties: accConverted
+        }
       }));
 }
 
 /**
  *
  * @param field
- * @return {Either<string, Object>}
+ * @return {Either<string, {definitions: {}, converted: {}}>}
  */
-const convertField = (field) => {
+const convertField = (definitions, field) => {
   const types = normalizeFieldTypes(field.type)
 
   let typeIndex;
@@ -62,40 +65,70 @@ const convertField = (field) => {
     return Either.left(`must have exactly 1 .type or 2 if one of them is ["null"]`)
   }
 
-  return convertType(types[typeIndex])
+  return convertType(definitions, types[typeIndex])
     .leftMap(err => `.type[${typeIndex}] : ${err}`)
 }
 
 /**
  *
  * @param type
- * @return {Either<string, Object>}
+ * @return {Either<string, {definitions: {}, converted: {}}>}
  */
-const convertType = (type) => {
+const convertType = (definitions, type) => {
   const {type: tt, logicalType} = type
+  let jsonType;
   if (!!logicalType) {
     return Either.left(`.logicalType is not supported`)
+  } else if (tt === 'null') {
+    // should not occurs
   } else if (tt === 'boolean') {
-    return Either.right({type: "boolean"})
+    jsonType = {type: "boolean"}
   } else if (tt === 'int') {
-    return Either.right({type: "integer"})
-  } else if (tt === 'bytes') {
-    return Either.right({type: "integer"})
+    jsonType = {type: "integer"}
   } else if (tt === 'long') {
-    return Either.right({type: "integer", format: "int64"})
+    jsonType = {type: "integer", format: "int64"}
   } else if (tt === 'float') {
-    return Either.right({type: "number"})
+    jsonType = {type: "number"}
   } else if (tt === 'double') {
-    return Either.right({type: "number"})
+    jsonType = {type: "number"}
+  } else if (tt === 'bytes') {
+    jsonType = {type: "integer"}
   } else if (tt === 'string') {
-    return Either.right({type: "string"})
+    jsonType = {type: "string"}
   } else if (tt === 'record') {
-    return convertTypeRecord(type)
+    return convertTypeRecord(definitions, type)
+      .map(({definitions, converted}) => {
+        if (type.name) {
+          if (definitions[type.name]) {
+            return Either.left(`a record named ${type.name} is already defined in this schema`)
+          } else {
+            return {
+              definitions: {
+                ...definitions,
+                [type.name]: converted
+              },
+              converted: {"$ref": "#/definitions/" + type.name}
+            }
+          }
+        } else {
+          return {definitions, converted}
+        }
+      })
+  } else if (tt === 'enum') {
+    // not yet supported
   } else if (tt === 'array') {
-    return convertType(normalizeFieldType(type.items)).bimap(
+    return convertType(definitions, normalizeFieldType(type.items)).bimap(
       err => `.items : ${err}`,
-      convertedItem => ({type: "array", items: convertedItem})
+      ({definitions, converted}) => ({definitions, converted: {type: "array", items: converted}})
     )
+  } else if (tt === 'fixed') {
+    // not yet supported
+  } else if (definitions[tt]) { //it's a ref to an existing type
+    jsonType = {"$ref": "#/definitions/" + tt}
+  }
+
+  if (jsonType) {
+    return Either.right({definitions, converted: jsonType})
   } else {
     return Either.left(`.type [${tt}] is not supported`)
   }

@@ -4,7 +4,6 @@ const assert = require('assert');
 describe('avro2jsons()',  () => {
   it('should convert avro to json schema', () => {
     const avro = {
-      "name": "com.test.Order",
       "type": "record",
       "fields": [
         {
@@ -28,7 +27,6 @@ describe('avro2jsons()',  () => {
           "type": {
             "type": "array",
             "items": {
-              "name": "com.test.OrderLine",
               "type": "record",
               "fields": [
                 {
@@ -93,7 +91,6 @@ describe('avro2jsons()',  () => {
 
   it('should convert array of string', () => {
     const avro = {
-      "name": "com.test.Order",
       "type": "record",
       "fields": [
         {
@@ -118,6 +115,60 @@ describe('avro2jsons()',  () => {
           }
         }
       }
+    }
+    assert.deepEqual(avro2jsons(avro).bimap(err => {throw new Error(err)}, v=>v).right(), expected);
+  });
+
+  it('should convert ref of declared record', () => {
+    const avro = {
+      "name": "com.Foo",
+      "type": "record",
+      "fields": [
+        {
+          "name": "address1",
+          "type": {
+            "type": "record",
+            "name": "Address",
+            "fields": [
+              {
+                "name" : "inline",
+                "type":"string"
+              }
+            ]
+          }
+        },
+        {
+          "name": "address2",
+          "type": "Address"
+        }
+      ]
+    }
+    const expected = {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "definitions": {
+        "Address": {
+          "type": "object",
+          "required": ["inline"],
+          "properties": {
+            "inline": {
+              "type": "string"
+            }
+          }
+        },
+        "com.Foo": {
+          "type": "object",
+          "required": ["address1", "address2"],
+          "properties": {
+            "address1": {
+              "$ref": "#/definitions/Address"
+            },
+            "address2": {
+              "$ref": "#/definitions/Address"
+            }
+          }
+        }
+      },
+      "$ref": "#/definitions/com.Foo"
     }
     assert.deepEqual(avro2jsons(avro).bimap(err => {throw new Error(err)}, v=>v).right(), expected);
   });
