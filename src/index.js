@@ -7,7 +7,7 @@ const {Either} = require('monet');
  * @return {Either<string, {}>}
  */
 module.exports = (avro) => {
-  return convertType({}, avro)
+  return convertType({}, normalizeFieldType(avro))
     .map(({definitions, converted}) => ({
         "definitions": definitions,
         "$schema": "http://json-schema.org/draft-07/schema#",

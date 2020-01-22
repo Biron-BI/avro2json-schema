@@ -172,4 +172,14 @@ describe('avro2jsons()',  () => {
     }
     assert.deepEqual(avro2jsons(avro).bimap(err => {throw new Error(err)}, v=>v).right(), expected);
   });
+
+  it('should convert basic type', () => {
+    const avro = "string"
+    const expected = {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "definitions": {},
+      "type": "string"
+    }
+    assert.deepEqual(avro2jsons(avro).bimap(err => {throw new Error(err)}, v=>v).right(), expected);
+  });
 });
