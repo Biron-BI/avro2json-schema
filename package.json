@@ -13,7 +13,7 @@
   "author": "",
   "license": "ISC",
   "dependencies": {
-    "lodash": "^4.17.15",
+    "lodash": "^4.17.19",
     "monet": "^0.9.1"
   },
   "devDependencies": {
